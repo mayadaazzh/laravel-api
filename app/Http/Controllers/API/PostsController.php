@@ -18,8 +18,31 @@ class PostsController extends Controller
      */
     public function index()
     {
-        $posts = Post::all();
-        return PostResource::collection($posts->loadMissing('writer:id,username'));
+        $posts = Post::with(['writer', 'comments'])->get();
+
+        $mappedData = $posts->map(function ($post) {
+            $comments = $post->comments->map(function ($comment) {
+                return [
+                    'comment' => $comment->comments_content,
+                ];
+            });
+
+            return [
+                'id' => $post->id,
+                'title' => $post->title,
+                'news_content' => $post->news_content,
+                'created_at' => date_format($post->created_at, "Y/m/d H:i:s"),
+                'writerFirstName' => $post->writer->firstname,
+                'writerLastName' => $post->writer->lastname,
+                'comments' => $comments,
+            ];
+        });
+
+        return response()->json([
+            'status' => true,
+            'message' => "the datas has been get",
+            'data' => $mappedData,
+        ], 200);
     }
 
     /**
@@ -33,13 +56,32 @@ class PostsController extends Controller
         $validated = $request->validate([
             'title' => 'required|max:255',
             'news_content' => 'required',
-            'user_id' => 'required|exists:users,id' 
+            'user_id' => 'required|exists:users,id'
         ]);
 
-        $post = Post::create($validated);
+        try {
+            $post = Post::create($validated);
 
-        return new PostResource($post->loadMissing('writer:id,email,username'));
+            if ($post) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'The data has been created.',
+                    'data' => $post
+                ], 202);
+            } else {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to create data.',
+                ], 404);
+            }
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'error' => $e->getMessage(),
+            ], 404);
+        }
     }
+
 
 
 
@@ -49,6 +91,7 @@ class PostsController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
+
 
     //    public function show($id) {
     //     $checkUser = User::where('id', $id)->first();
@@ -72,15 +115,53 @@ class PostsController extends Controller
     //     } catch (Exception $e) {
     //         return response()->json([
     //             'status' => false,
-    //             'error' => $e->getMessage(),
+    //             'error'  => $e->getMessage(),
     //         ], 404);
     //     }
     // }
 
     public function show($id)
     {
-        $post = Post::with('writer:id,email,username')->findOrFail($id);
-        return new PostResource($post);
+        $post = Post::with('writer', 'comments')->find($id);
+
+        try {
+            if ($post) {
+                $comments = $post->comments->map(function ($comment) {
+                    return [
+                        'comment' => $comment->comments_content,
+                    ];
+                });
+
+                $mappedData = [
+                    'id' => $post->id,
+                    'title' => $post->title,
+                    'news_content' => $post->news_content,
+                    'created_at' => date_format($post->created_at, "Y/m/d H:i:s"),
+                    'writerFirstName' => $post->writer->firstname,
+                    'writerLastName' => $post->writer->lastname,
+                    'comments' => $comments,
+                ];
+
+                return response()->json([
+                    'status' => true,
+                    'message' => "Post found.",
+                    'data' => $mappedData
+                ], 200);
+                
+            } else {
+                // Jika post tidak ditemukan
+                return response()->json([
+                    'status' => false,
+                    'message' => "Post not found.",
+                ], 404);
+            }
+        } catch (Exception $e) {
+            // Jika terjadi kesalahan
+            return response()->json([
+                'status' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -97,11 +178,30 @@ class PostsController extends Controller
             'news_content' => 'required',
         ]);
 
-        $post = Post::findOrfail($id);
-        $post->update($request->all());
+        $post = Post::find($id);
 
-        return new PostResource($post->loadMissing('writer:id,email,username'));
-
+        try {
+            if ($post) {
+                $post->title = $request->title;
+                $post->news_content = $request->news_content;
+                $post->save();
+                return response()->json([
+                    'status' => true,
+                    'message' => "the data has been updated",
+                    'data' => $post
+                ], 202);
+            } else {
+                return response()->json([
+                    'status' => false,
+                    'message' => "ada yang salah",
+                ], 404);
+            }
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'error' => $e->getMessage(),
+            ], 404);
+        }
     }
 
     /**
@@ -112,10 +212,27 @@ class PostsController extends Controller
      */
     public function destroy($id)
     {
-        $post = Post::findOrfail($id);
-        // $post->delete();
+        $post = Post::find($id);
 
-        return new PostResource($post->loadMissing('writer:id,email,username'));
+        try {
+            if ($post) {
+                $post->delete();
 
+                return response()->json([
+                    'status' => true,
+                    'message' => 'the data id ' . $id . ' has been deleted',
+                ], 202);
+            } else {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Data with id ' . $id . ' not found.',
+                ], 404);
+            }
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'error' => $e->getMessage(),
+            ], 404);
+        }
     }
 }

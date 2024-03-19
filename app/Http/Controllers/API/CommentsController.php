@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CommentResource;
 use App\Models\Comment;
+use Exception;
 use Illuminate\Http\Request;
 
 class CommentsController extends Controller
@@ -58,13 +59,34 @@ class CommentsController extends Controller
      */
     public function update(Request $request, $id)
     {
+
         $validated = $request->validate([
             'comments_content' => 'required',
         ]);
-
-        $comment = Comment::findOrFail($id);
-        $comment->update($request->only('comments_content'));
-        return new CommentResource($comment->loadMissing(['commentator:id,username']));
+    
+        try {
+            $comment = Comment::find($id);
+    
+            if ($comment) {
+                $comment->comments_content = $request['comments_content'];
+                $comment->save();
+                return response()->json([
+                    'status' => true,
+                    'message' => "the data has been updated",
+                    'data' => $comment
+                ], 202);
+            } else {
+                return response()->json([
+                    'status' => false,
+                    'message' => "ada yang salah",
+                ], 404);
+            }
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'error' => $e->getMessage(),
+            ], 404);
+        }
     }
 
     /**
@@ -75,6 +97,27 @@ class CommentsController extends Controller
      */
     public function destroy($id)
     {
-        //
+        $comment = Comment::find($id);
+
+        try {
+            if ($comment) {
+                $comment->delete();
+
+                return response()->json([
+                    'status' => true,
+                    'message' => 'the comment id ' . $id . ' has been deleted',
+                ], 202);
+            } else {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'comment with id ' . $id . ' not found.',
+                ], 404);
+            }
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'error' => $e->getMessage(),
+            ], 404);
+        }
     }
 }

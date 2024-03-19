@@ -18,7 +18,7 @@ class UserController extends Controller
         ], 200);
     }
 
-    public function show(string $id){
+    public function show($id){
         $users = User::find($id);
         if($users){
             return response()-> json([
