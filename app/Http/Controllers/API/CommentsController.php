@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\CommentResource;
+use App\Models\Comment;
 use Illuminate\Http\Request;
 
 class CommentsController extends Controller
@@ -25,7 +27,15 @@ class CommentsController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'post_id' => 'required|exists:posts,id',
+            'comments_content' => 'required',
+            'user_id' => 'required',
+
+        ]);
+
+        $comment = Comment::create($request->all());
+        return new CommentResource($comment->loadMissing(['commentator:id,username']));
     }
 
     /**
@@ -48,7 +58,13 @@ class CommentsController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        $validated = $request->validate([
+            'comments_content' => 'required',
+        ]);
+
+        $comment = Comment::findOrFail($id);
+        $comment->update($request->only('comments_content'));
+        return new CommentResource($comment->loadMissing(['commentator:id,username']));
     }
 
     /**

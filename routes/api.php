@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\CommentsController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\PostsController;
 use Illuminate\Http\Request;
@@ -28,6 +29,9 @@ Route::get('posts/{id}', [PostsController::class, 'show']);
 Route::post('posts', [PostsController::class, 'store']);
 Route::patch('posts/{id}', [PostsController::class, 'update']);
 // Route::delete('posts/{id}', [PostsController::class, 'destroy']);
+
+Route::post('comment', [CommentsController::class, 'store']);
+
 
 
 
